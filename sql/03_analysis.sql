@@ -78,8 +78,12 @@ SELECT
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.category
 ORDER BY revenue DESC;
+
 
 -- 6. Units sold by category
 SELECT
@@ -88,8 +92,12 @@ SELECT
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.category
 ORDER BY units_sold DESC;
+
 
 -- 7. Revenue per unit by category
 SELECT
@@ -105,8 +113,12 @@ SELECT
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.category
 ORDER BY revenue_per_unit DESC;
+
 
 -- 8. Top products by revenue
 SELECT
@@ -122,9 +134,13 @@ SELECT
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.product_name
 ORDER BY revenue DESC
 LIMIT 10;
+
 
 -- 9. Top products by units sold
 SELECT
@@ -133,6 +149,9 @@ SELECT
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.product_name
 ORDER BY units_sold DESC
 LIMIT 10;
@@ -141,7 +160,7 @@ LIMIT 10;
 SELECT COUNT(DISTINCT customer_id) AS customers_with_orders
 FROM orders;
 
--- 11. Top customers by spending
+-- 11. Top customers by completed spending
 SELECT
     orders.customer_id,
     ROUND(
@@ -155,15 +174,17 @@ SELECT
 FROM orders
 JOIN order_items
     ON orders.order_id = order_items.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY orders.customer_id
 ORDER BY total_spending DESC
 LIMIT 10;
+
 
 -- 12. Customer segment performance
 SELECT
     customers.customer_segment,
     COUNT(DISTINCT orders.customer_id) AS customers,
-    COUNT(DISTINCT orders.order_id) AS orders,
+    COUNT(DISTINCT orders.order_id) AS completed_orders,
     ROUND(
         SUM(
             order_items.quantity
@@ -177,8 +198,10 @@ JOIN orders
     ON customers.customer_id = orders.customer_id
 JOIN order_items
     ON orders.order_id = order_items.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY customers.customer_segment
 ORDER BY revenue DESC;
+
 
 -- 13. Revenue per customer by segment
 SELECT
@@ -197,13 +220,15 @@ JOIN orders
     ON customers.customer_id = orders.customer_id
 JOIN order_items
     ON orders.order_id = order_items.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY customers.customer_segment
 ORDER BY revenue_per_customer DESC;
 
--- 14. Orders per customer by segment
+
+-- 14. Completed orders per customer by segment
 SELECT
     customers.customer_segment,
-    COUNT(DISTINCT orders.order_id) AS total_orders,
+    COUNT(DISTINCT orders.order_id) AS completed_orders,
     COUNT(DISTINCT customers.customer_id) AS customers,
     ROUND(
         COUNT(DISTINCT orders.order_id) * 1.0
@@ -213,40 +238,56 @@ SELECT
 FROM customers
 JOIN orders
     ON customers.customer_id = orders.customer_id
+WHERE orders.order_status = 'Completed'
 GROUP BY customers.customer_segment
 ORDER BY orders_per_customer DESC;
 
--- 15. Discount distribution
+-- 15. Discount distribution in completed orders
 SELECT
-    discount_pct,
+    order_items.discount_pct,
     COUNT(*) AS total_items
 FROM order_items
-GROUP BY discount_pct
-ORDER BY discount_pct;
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
+GROUP BY order_items.discount_pct
+ORDER BY order_items.discount_pct;
 
--- 16. Discount vs sales
+
+-- 16. Discount vs sales in completed orders
 SELECT
-    discount_pct,
-    SUM(quantity) AS units_sold,
+    order_items.discount_pct,
+    SUM(order_items.quantity) AS units_sold,
     ROUND(
-        SUM(quantity * unit_price * (1 - discount_pct)),
+        SUM(
+            order_items.quantity
+            * order_items.unit_price
+            * (1 - order_items.discount_pct)
+        ),
         2
     ) AS revenue
 FROM order_items
-GROUP BY discount_pct
-ORDER BY discount_pct;
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
+GROUP BY order_items.discount_pct
+ORDER BY order_items.discount_pct;
 
--- 17. Average discount by category
+
+-- 17. Average discount by category in completed orders
 SELECT
     products.category,
     ROUND(AVG(order_items.discount_pct) * 100, 2) AS average_discount
 FROM products
 JOIN order_items
     ON products.product_id = order_items.product_id
+JOIN orders
+    ON order_items.order_id = orders.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY products.category
 ORDER BY average_discount DESC;
 
--- 18. Monthly revenue
+-- 18. Monthly completed revenue
 SELECT
     DATE_FORMAT(STR_TO_DATE(orders.order_date, '%Y-%m-%d'), '%Y-%m') AS month,
     ROUND(
@@ -260,10 +301,12 @@ SELECT
 FROM orders
 JOIN order_items
     ON orders.order_id = order_items.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY month
 ORDER BY month;
 
--- 19. Monthly AOV
+
+-- 19. Monthly completed AOV
 SELECT
     DATE_FORMAT(STR_TO_DATE(orders.order_date, '%Y-%m-%d'), '%Y-%m') AS month,
     ROUND(
@@ -277,5 +320,6 @@ SELECT
 FROM orders
 JOIN order_items
     ON orders.order_id = order_items.order_id
+WHERE orders.order_status = 'Completed'
 GROUP BY month
 ORDER BY month;
